@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class Plan {
@@ -6,7 +7,12 @@ class Plan {
   String selectedDate;
   String status;
 
-  Plan({required this.name, required this.description, required this.selectedDate, required this.status});
+  Plan({
+    required this.name,
+    required this.description,
+    required this.selectedDate,
+    required this.status,
+  });
 }
 
 void main() {
@@ -16,7 +22,6 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -42,7 +47,9 @@ class _PlanManagerScreen extends State<PlanManagerScreen> {
   late TextEditingController nameController;
   late TextEditingController descController;
   late TextEditingController dateController;
-  late TextEditingController statusController;
+  bool isDragging = false; // Add this line
+
+  List<Plan> _planList = [];
 
   @override
   void initState() {
@@ -50,7 +57,6 @@ class _PlanManagerScreen extends State<PlanManagerScreen> {
     nameController = TextEditingController();
     descController = TextEditingController();
     dateController = TextEditingController();
-    statusController = TextEditingController();
   }
 
   @override
@@ -58,11 +64,30 @@ class _PlanManagerScreen extends State<PlanManagerScreen> {
     nameController.dispose();
     descController.dispose();
     dateController.dispose();
-    statusController.dispose();
     super.dispose();
   }
-  
-  List<Plan> _planList = [];
+
+  Widget proxyDecorator(Widget child, int index, Animation<double> animation) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (BuildContext context, Widget? child) {
+        final double animValue = Curves.easeInOut.transform(animation.value);
+        final double elevation = lerpDouble(1, 6, animValue)!;
+        final double scale = lerpDouble(1, 1.02, animValue)!;
+        return Transform.scale(
+          scale: scale,
+          child: Card(
+            elevation: elevation,
+            color: _planList[index].status == 'completed'
+                ? Colors.green[100]
+                : Colors.orangeAccent,
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,40 +96,71 @@ class _PlanManagerScreen extends State<PlanManagerScreen> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
       ),
-      body: Center(
-        child: ListView.builder(
-          itemCount: _planList.length,
-          itemBuilder: (BuildContext context, int index) {
-            return GestureDetector(
-              onDoubleTap: () {setState(() {_planList.removeAt(index);});},
-              onHorizontalDragUpdate: (details) {
-                if (details.delta.dx > 0) {
-                  setState(() {_planList[index].status = 'completed';});
-                } else if (details.delta.dx < 0) {
-                  setState(() {_planList[index].status = 'pending';});
+      body: ReorderableListView(
+        proxyDecorator: proxyDecorator,
+        onReorder: (int oldIndex, int newIndex) {
+          setState(() {
+            if (newIndex > oldIndex) {
+              newIndex -= 1;
+            }
+            final Plan item = _planList.removeAt(oldIndex);
+            _planList.insert(newIndex, item);
+          });
+        },
+        children: List.generate(_planList.length, (index) {
+          return GestureDetector(
+            key: ValueKey(_planList[index]),
+            onHorizontalDragStart: (details) {
+              setState(() {
+                isDragging = true;
+              });
+            },
+            onHorizontalDragEnd: (details) {
+              setState(() {
+                isDragging = false;
+                if (details.primaryVelocity! > 0) {
+                  _planList[index].status = 'completed';
+                } else if (details.primaryVelocity! < 0) {
+                  _planList[index].status = 'pending';
                 }
+              });
+            },
+            child: ListTile(
+              title: Text(_planList[index].name),
+              subtitle: Text(_planList[index].description),
+              tileColor: _planList[index].status == 'completed' ? Colors.green[100] : Colors.orangeAccent,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_planList[index].selectedDate),
+                  const SizedBox(width: 10),
+                  if (!isDragging) 
+                    ReorderableDragStartListener(
+                      index: index,
+                      child: const Icon(Icons.drag_handle),
+                    ),
+                ],
+              ),
+              onLongPress: () =>
+                  _openAddPlanDialog(status: _planList[index].status, planIndex: index),
+            ),
+              onDoubleTap: () {
+                setState(() {
+                  _planList.removeAt(index);
+                });
               },
-              child: ListTile(
-                title: Text(_planList[index].name),
-                tileColor: _planList[index].status == 'completed' ? Colors.green[100] : Colors.orangeAccent,
-                subtitle: Text(_planList[index].description),
-                trailing: Text(_planList[index].selectedDate),
-                onLongPress: () => _openAddPlanDialog(status: _planList[index].status, planIndex: index),
-              )
-            );
-          },
-        ),
+          );
+        }),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _openAddPlanDialog(status:'pending'),
+        onPressed: () => _openAddPlanDialog(status: 'pending'),
         tooltip: 'Add Plan',
         child: const Icon(Icons.add),
       ),
     );
   }
 
-    Future<void> _openAddPlanDialog({String status = 'pending', int planIndex = -1}) async {
-    // Reset controllers for new plans, or load existing data if editing
+  Future<void> _openAddPlanDialog({String status = 'pending', int planIndex = -1}) async {
     if (planIndex == -1) {
       nameController.clear();
       descController.clear();
@@ -142,7 +198,7 @@ class _PlanManagerScreen extends State<PlanManagerScreen> {
 
                   if (pickedDate != null) {
                     setState(() {
-                      dateController.text = "${pickedDate.toLocal()}".split(' ')[0]; // Format: YYYY-MM-DD
+                      dateController.text = "${pickedDate.toLocal()}".split(' ')[0];
                     });
                   }
                 },
@@ -176,14 +232,14 @@ class _PlanManagerScreen extends State<PlanManagerScreen> {
                         name: name,
                         description: description,
                         selectedDate: date,
-                        status: status, // Use the passed status
+                        status: status,
                       ));
                     } else {
                       _planList[planIndex] = Plan(
                         name: name,
                         description: description,
                         selectedDate: date,
-                        status: _planList[planIndex].status, // Preserve status when editing
+                        status: _planList[planIndex].status,
                       );
                     }
                   });
