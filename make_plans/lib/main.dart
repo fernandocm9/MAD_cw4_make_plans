@@ -76,10 +76,13 @@ class _PlanManagerScreen extends State<PlanManagerScreen> {
           itemCount: _planList.length,
           itemBuilder: (BuildContext context, int index) {
             return GestureDetector(
-              onDoubleTap: () {
-                setState(() {
-                  _planList.removeAt(index);
-                });
+              onDoubleTap: () {setState(() {_planList.removeAt(index);});},
+              onHorizontalDragUpdate: (details) {
+                if (details.delta.dx > 0) {
+                  setState(() {_planList[index].status = 'completed';});
+                } else if (details.delta.dx < 0) {
+                  setState(() {_planList[index].status = 'pending';});
+                }
               },
               child: ListTile(
                 title: Text(_planList[index].name),
@@ -148,7 +151,7 @@ class _PlanManagerScreen extends State<PlanManagerScreen> {
                     controller: dateController,
                     decoration: const InputDecoration(
                       labelText: 'Select Date',
-                      suffixIcon: Icon(Icons.calendar_today), // Calendar icon
+                      suffixIcon: Icon(Icons.calendar_today),
                     ),
                   ),
                 ),
