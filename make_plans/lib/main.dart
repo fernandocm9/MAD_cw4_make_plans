@@ -22,7 +22,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
       home: const PlanManagerScreen(title: 'Make Plans'),
     );
@@ -63,7 +63,6 @@ class _PlanManagerScreen extends State<PlanManagerScreen> {
   }
   
   List<Plan> _planList = [];
-  int _planId = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -76,11 +75,19 @@ class _PlanManagerScreen extends State<PlanManagerScreen> {
         child: ListView.builder(
           itemCount: _planList.length,
           itemBuilder: (BuildContext context, int index) {
-            return ListTile(
-              title: Text(_planList[index].name),
-              subtitle: Text(_planList[index].description),
-              trailing: Text(_planList[index].selectedDate),
-              onLongPress: () => _openAddPlanDialog(status: _planList[index].status, planIndex: index),
+            return GestureDetector(
+              onDoubleTap: () {
+                setState(() {
+                  _planList.removeAt(index);
+                });
+              },
+              child: ListTile(
+                title: Text(_planList[index].name),
+                tileColor: _planList[index].status == 'completed' ? Colors.green[100] : Colors.orangeAccent,
+                subtitle: Text(_planList[index].description),
+                trailing: Text(_planList[index].selectedDate),
+                onLongPress: () => _openAddPlanDialog(status: _planList[index].status, planIndex: index),
+              )
             );
           },
         ),
