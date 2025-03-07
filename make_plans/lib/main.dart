@@ -39,13 +39,31 @@ class PlanManagerScreen extends StatefulWidget {
 }
 
 class _PlanManagerScreen extends State<PlanManagerScreen> {
-  int _counter = 0;
+  late TextEditingController nameController;
+  late TextEditingController descController;
+  late TextEditingController dateController;
+  late TextEditingController statusController;
 
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
+  @override
+  void initState() {
+    super.initState();
+    nameController = TextEditingController();
+    descController = TextEditingController();
+    dateController = TextEditingController();
+    statusController = TextEditingController();
   }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    descController.dispose();
+    dateController.dispose();
+    statusController.dispose();
+    super.dispose();
+  }
+  
+  List<Plan> _planList = [];
+  int _planId = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -58,19 +76,68 @@ class _PlanManagerScreen extends State<PlanManagerScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
+        onPressed: () => _openAddPlanDialog(status:'pending'),
+        tooltip: 'Add Plan',
         child: const Icon(Icons.add),
       ),
     );
+  }
+
+  Future<void> _openAddPlanDialog({String status = 'pending', int planIndex = -1}) async {
+    final result = await showDialog<List<String>>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(status == 'pending' ? 'Edit Plan' : 'Add Plan'),
+          content: Column(
+            children: <Widget>[
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+              ),
+              TextField(
+                controller: descController,
+                decoration: const InputDecoration(labelText: 'Description'),
+              ),
+              TextField(
+                controller: dateController,
+                decoration: const InputDecoration(labelText: 'Date'),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final name = nameController.text;
+                final description = descController.text;
+                final date = dateController.text;
+                final status = statusController.text;
+                if (name.isNotEmpty && description.isNotEmpty && date.isNotEmpty) {
+                  if (planIndex == -1) {
+                    _planList.add(Plan(name: name, description: description, date: date, status: status));
+                  } else {
+                    _planList[planIndex] = Plan(name: name, description: description, date: date, status: status);
+                  }
+                  setState(() {});
+                  Navigator.of(context).pop();
+                }
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+
   }
 }
