@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 class Plan {
   String name;
   String description;
-  String date;
+  String selectedDate;
   String status;
 
-  Plan({required this.name, required this.description, required this.date, required this.status});
+  Plan({required this.name, required this.description, required this.selectedDate, required this.status});
 }
 
 void main() {
@@ -87,57 +87,76 @@ class _PlanManagerScreen extends State<PlanManagerScreen> {
     );
   }
 
-  Future<void> _openAddPlanDialog({String status = 'pending', int planIndex = -1}) async {
-    final result = await showDialog<List<String>>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(status == 'pending' ? 'Edit Plan' : 'Add Plan'),
-          content: Column(
-            children: <Widget>[
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name'),
-              ),
-              TextField(
-                controller: descController,
-                decoration: const InputDecoration(labelText: 'Description'),
-              ),
-              TextField(
-                controller: dateController,
-                decoration: const InputDecoration(labelText: 'Date'),
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Cancel'),
+Future<void> _openAddPlanDialog({String status = 'pending', int planIndex = -1}) async {
+  final result = await showDialog<List<String>>(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text(status == 'pending' ? 'Edit Plan' : 'Add Plan'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min, // Prevents unnecessary space
+          children: <Widget>[
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Name'),
             ),
-            TextButton(
-              onPressed: () {
-                final name = nameController.text;
-                final description = descController.text;
-                final date = dateController.text;
-                final status = statusController.text;
-                if (name.isNotEmpty && description.isNotEmpty && date.isNotEmpty) {
-                  if (planIndex == -1) {
-                    _planList.add(Plan(name: name, description: description, date: date, status: status));
-                  } else {
-                    _planList[planIndex] = Plan(name: name, description: description, date: date, status: status);
-                  }
-                  setState(() {});
-                  Navigator.of(context).pop();
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+            GestureDetector(
+              onTap: () async {
+                DateTime? pickedDate = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+
+                if (pickedDate != null) {
+                  setState(() {
+                    dateController.text = "${pickedDate.toLocal()}".split(' ')[0]; // Format: YYYY-MM-DD
+                  });
                 }
               },
-              child: const Text('Add'),
+              child: AbsorbPointer(
+                child: TextField(
+                  controller: dateController,
+                  decoration: const InputDecoration(
+                    labelText: 'Select Date',
+                    suffixIcon: Icon(Icons.calendar_today), // Calendar icon
+                  ),
+                ),
+              ),
             ),
           ],
-        );
-      },
-    );
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final name = nameController.text;
+              final description = descController.text;
+              final date = dateController.text;
 
-  }
+              if (name.isNotEmpty && description.isNotEmpty && date.isNotEmpty) {
+                if (planIndex == -1) {
+                  _planList.add(Plan(name: name, description: description, selectedDate: date, status: status));
+                } else {
+                  _planList[planIndex] = Plan(name: name, description: description, selectedDate: date, status: status);
+                }
+                setState(() {});
+                Navigator.of(context).pop();
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      );
+    },
+  );
+}
 }
